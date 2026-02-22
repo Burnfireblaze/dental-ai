@@ -97,10 +97,10 @@ export default function AIAssistant() {
         </div>
 
         {/* Chat Container */}
-        <Card className="h-[calc(100vh-250px)] flex flex-col">
-          <CardContent className="flex-1 flex flex-col p-4 sm:p-6">
+        <Card className="h-[calc(100vh-250px)] flex flex-col overflow-hidden">
+          <CardContent className="flex-1 min-h-0 flex flex-col p-4 sm:p-6">
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-2">
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-4 mb-4 pr-2">
               {messages.map((message) => (
                 <div
                   key={message.id}

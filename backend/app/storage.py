@@ -134,6 +134,31 @@ def get_case(case_id: str) -> Optional[Dict[str, Any]]:
         conn.close()
 
 
+def list_cases(limit: int = 10) -> List[Dict[str, Any]]:
+    conn = _connect()
+    try:
+        rows = conn.execute(
+            "SELECT case_id, patient_id, created_at, status, result_json FROM cases ORDER BY created_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        results: List[Dict[str, Any]] = []
+        for row in rows:
+            result_json = row["result_json"]
+            result = json.loads(result_json) if result_json else None
+            results.append(
+                {
+                    "case_id": row["case_id"],
+                    "patient_id": row["patient_id"],
+                    "created_at": row["created_at"],
+                    "status": row["status"],
+                    "result": result,
+                }
+            )
+        return results
+    finally:
+        conn.close()
+
+
 def create_job(job_id: str, case_id: str) -> None:
     conn = _connect()
     try:
