@@ -8,7 +8,7 @@ import DetectionCard from '../components/findings/detection-card';
 import CorrectionForm from '../components/findings/correction-form';
 import { Checkbox } from '../components/ui/checkbox';
 import { useCaseAnalysis } from '../hooks/useCaseAnalysis';
-import { sendFeedback } from '../services/ai-api';
+import { sendFeedback, summarizeFindings } from '../services/ai-api';
 import type { Finding } from '../types/ai';
 
 export default function FindingsReview() {
@@ -17,6 +17,12 @@ export default function FindingsReview() {
   const { caseData } = useCaseAnalysis(caseId);
   const [findings, setFindings] = useState<Finding[]>([]);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [approved, setApproved] = useState<boolean>(() => {
+    if (!caseId) return false;
+    return sessionStorage.getItem(`case-approved-${caseId}`) === 'true';
+  });
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [summaryMessage, setSummaryMessage] = useState<string | null>(null);
 
   const [editingFinding, setEditingFinding] = useState<number | null>(null);
 
@@ -26,6 +32,16 @@ export default function FindingsReview() {
       setSelectedIds([]);
     }
   }, [caseData]);
+
+  useEffect(() => {
+    if (!caseId) {
+      setApproved(false);
+      return;
+    }
+    const stored = sessionStorage.getItem(`case-approved-${caseId}`);
+    setApproved(stored === 'true');
+    setSummaryMessage(null);
+  }, [caseId]);
 
   const handleAccept = (id: number) => {
     setFindings(findings.map(f => 
@@ -110,6 +126,40 @@ export default function FindingsReview() {
   const acceptedCount = findings.filter(f => f.status === 'accepted').length;
   const correctedCount = findings.filter(f => f.status === 'corrected').length;
   const rejectedCount = findings.filter(f => f.status === 'rejected').length;
+  const reviewComplete = findings.length > 0 && (acceptedCount + correctedCount + rejectedCount === findings.length);
+  const approvedFindings = findings.filter(f => f.status === 'accepted' || f.status === 'corrected');
+
+  const handleApprove = () => {
+    if (!reviewComplete) return;
+    setApproved(true);
+    if (caseId) {
+      sessionStorage.setItem(`case-approved-${caseId}`, 'true');
+    }
+  };
+
+  const handleGenerateSummary = async () => {
+    if (!approved || !caseId) return;
+    if (!approvedFindings.length) {
+      setSummaryMessage('Approve at least one finding to summarize.');
+      return;
+    }
+    try {
+      setIsSummarizing(true);
+      setSummaryMessage(null);
+      const summary = await summarizeFindings({
+        patientId: caseData?.patientId,
+        findings: approvedFindings,
+        doctorNotes: undefined,
+      });
+      sessionStorage.setItem(`case-summary-${caseId}`, JSON.stringify(summary));
+      setSummaryMessage('Clinical summary generated. View it under the Summary tab.');
+      navigate(`/analysis/${caseId}?tab=summary`);
+    } catch (err) {
+      setSummaryMessage(err instanceof Error ? err.message : 'Unable to generate summary.');
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -129,19 +179,19 @@ export default function FindingsReview() {
               <p className="text-sm text-gray-600">Case: {caseId}</p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Badge variant="outline" className="bg-green-50">
-              {acceptedCount} Accepted
-            </Badge>
-            <Badge variant="outline" className="bg-blue-50">
-              {correctedCount} Corrected
-            </Badge>
-            <Badge variant="outline" className="bg-red-50">
-              {rejectedCount} Rejected
-            </Badge>
-          </div>
+        <div className="flex gap-2">
+          <Badge variant="outline" className="bg-green-50">
+            {acceptedCount} Accepted
+          </Badge>
+          <Badge variant="outline" className="bg-blue-50">
+            {correctedCount} Corrected
+          </Badge>
+          <Badge variant="outline" className="bg-red-50">
+            {rejectedCount} Rejected
+          </Badge>
         </div>
       </div>
+    </div>
 
       <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
         {/* Progress */}
@@ -228,6 +278,23 @@ export default function FindingsReview() {
           >
             Back to Analysis
           </Button>
+          <Button
+            variant={approved ? 'secondary' : 'default'}
+            onClick={handleApprove}
+            disabled={!reviewComplete || approved}
+            className="sm:w-auto w-full"
+          >
+            {approved ? 'Findings Approved' : 'Approve Findings'}
+          </Button>
+          {approved && (
+            <Button
+              onClick={handleGenerateSummary}
+              disabled={isSummarizing || !approvedFindings.length}
+              className="sm:w-auto w-full"
+            >
+              {isSummarizing ? 'Generating...' : '✦ Generate Clinical Summary'}
+            </Button>
+          )}
           <Button 
             onClick={() => navigate(`/report/${caseId}`)}
             disabled={acceptedCount + correctedCount + rejectedCount < findings.length}
@@ -236,6 +303,9 @@ export default function FindingsReview() {
             Generate Report
           </Button>
         </div>
+        {summaryMessage && (
+          <p className="mt-2 text-sm text-gray-700 text-right">{summaryMessage}</p>
+        )}
       </div>
     </div>
   );

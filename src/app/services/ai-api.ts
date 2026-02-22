@@ -6,6 +6,7 @@ import type {
   FeedbackRequest,
   JobResponse,
   MetricsResponse,
+  SummaryResponse,
 } from '../types/ai';
 
 const API_BASE = (import.meta as any).env?.VITE_AI_API_BASE_URL || 'http://localhost:8000';
@@ -117,4 +118,43 @@ export async function getMetrics(): Promise<MetricsResponse> {
     throw new Error('Failed to fetch metrics');
   }
   return response.json();
+}
+
+export async function summarizeFindings(payload: {
+  patientId?: string | null;
+  findings: Finding[];
+  doctorNotes?: string;
+}): Promise<SummaryResponse> {
+  const body = {
+    approved: true,
+    patient_id: payload.patientId,
+    doctor_notes: payload.doctorNotes,
+    findings: payload.findings.map((f) => ({
+      tooth: f.tooth,
+      label: f.label,
+      severity: f.severity,
+      confidence: f.confidence > 1 ? f.confidence / 100 : f.confidence,
+      status: f.status,
+    })),
+  };
+
+  const response = await fetch(buildUrl('/api/summarize'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.error || 'Failed to generate summary');
+  }
+
+  return {
+    patientId: data.patient_id ?? payload.patientId ?? null,
+    clinicalSummary: data.clinical_summary,
+    riskLevel: data.risk_level,
+    urgency: data.urgency,
+    patientExplanation: data.patient_explanation,
+    recommendedActions: data.recommended_actions || [],
+  };
 }

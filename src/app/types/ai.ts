@@ -154,3 +154,12 @@ export interface MetricsResponse {
   urgency_distribution: MetricUrgencyItem[];
   recent_corrections: MetricCorrectionItem[];
 }
+
+export interface SummaryResponse {
+  patientId?: string | null;
+  clinicalSummary: string;
+  riskLevel: string;
+  urgency: string;
+  patientExplanation: string;
+  recommendedActions: string[];
+}
