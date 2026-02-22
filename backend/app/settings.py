@@ -38,6 +38,11 @@ class Settings:
     segmentation_model_path: Optional[Path]
     detection_primary_model_path: Optional[Path]
     detection_secondary_model_path: Optional[Path]
+    jwt_secret: str
+    jwt_algorithm: str
+    access_token_minutes: int
+    password_min_length: int
+    password_max_bytes: int
 
 
 def _find_model(model_dir: Path, patterns: List[str]) -> Optional[Path]:
@@ -72,6 +77,11 @@ settings = Settings(
     segmentation_model_path=None,
     detection_primary_model_path=None,
     detection_secondary_model_path=None,
+    jwt_secret=_env("JWT_SECRET", "dev-secret-change-me"),
+    jwt_algorithm=_env("JWT_ALGORITHM", "HS256"),
+    access_token_minutes=int(_env("ACCESS_TOKEN_MINUTES", "1440")),
+    password_min_length=int(_env("PASSWORD_MIN_LENGTH", "12")),
+    password_max_bytes=int(_env("PASSWORD_MAX_BYTES", "72")),
 )
 
 settings = settings.__class__(  # type: ignore[misc]

@@ -118,3 +118,47 @@ class Metrics(BaseModel):
     calibration: List[MetricCalibrationItem]
     urgency_distribution: List[MetricUrgencyItem]
     recent_corrections: List[MetricCorrectionItem]
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class SignupRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+
+
+class AuthResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class ProfileResponse(BaseModel):
+    id: str
+    name: str
+    email: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
+    license_number: Optional[str] = None
+    specialty: Optional[str] = None
+    display_name: Optional[str] = None
+
+
+class ProfileUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
+    license_number: Optional[str] = None
+    specialty: Optional[str] = None
+    display_name: Optional[str] = None
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str

@@ -23,6 +23,25 @@ def init_db() -> None:
     try:
         conn.executescript(
             """
+            CREATE TABLE IF NOT EXISTS users (
+                id TEXT PRIMARY KEY,
+                name TEXT,
+                email TEXT UNIQUE,
+                password_hash TEXT,
+                role TEXT,
+                role_access TEXT,
+                status TEXT,
+                first_name TEXT,
+                last_name TEXT,
+                phone TEXT,
+                license_number TEXT,
+                specialty TEXT,
+                display_name TEXT,
+                created_at TEXT,
+                updated_at TEXT,
+                last_login TEXT
+            );
+
             CREATE TABLE IF NOT EXISTS cases (
                 case_id TEXT PRIMARY KEY,
                 patient_id TEXT,
@@ -52,6 +71,108 @@ def init_db() -> None:
                 payload TEXT
             );
             """
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def create_user(
+    user_id: str,
+    name: str,
+    email: str,
+    password_hash: str,
+    role: str = "doctor",
+    role_access: Optional[List[str]] = None,
+) -> None:
+    conn = _connect()
+    try:
+        now = datetime.utcnow().isoformat()
+        conn.execute(
+            """
+            INSERT INTO users (id, name, email, password_hash, role, role_access, status, display_name, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                user_id,
+                name,
+                email.lower(),
+                password_hash,
+                role,
+                json.dumps(role_access or [role]),
+                "active",
+                name,
+                now,
+                now,
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
+    conn = _connect()
+    try:
+        row = conn.execute("SELECT * FROM users WHERE email = ?", (email.lower(),)).fetchone()
+        if not row:
+            return None
+        return dict(row)
+    finally:
+        conn.close()
+
+
+def get_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
+    conn = _connect()
+    try:
+        row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not row:
+            return None
+        return dict(row)
+    finally:
+        conn.close()
+
+
+def update_user_profile(user_id: str, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    if not updates:
+        return get_user_by_id(user_id)
+    fields = []
+    values = []
+    for key, value in updates.items():
+        fields.append(f"{key} = ?")
+        values.append(value)
+    values.append(datetime.utcnow().isoformat())
+    values.append(user_id)
+    conn = _connect()
+    try:
+        conn.execute(
+            f"UPDATE users SET {', '.join(fields)}, updated_at = ? WHERE id = ?",
+            tuple(values),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return get_user_by_id(user_id)
+
+
+def update_user_password(user_id: str, password_hash: str) -> None:
+    conn = _connect()
+    try:
+        conn.execute(
+            "UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?",
+            (password_hash, datetime.utcnow().isoformat(), user_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def update_user_last_login(user_id: str) -> None:
+    conn = _connect()
+    try:
+        conn.execute(
+            "UPDATE users SET last_login = ? WHERE id = ?",
+            (datetime.utcnow().isoformat(), user_id),
         )
         conn.commit()
     finally:

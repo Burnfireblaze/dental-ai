@@ -6,14 +6,26 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
 from .settings import settings, ensure_directories
 from . import storage
 from .jobs import JobManager
-from .schemas import AnalyzeResponse, JobStatus, CaseData, FeedbackRequest
+from .schemas import (
+    AnalyzeResponse,
+    JobStatus,
+    CaseData,
+    FeedbackRequest,
+    LoginRequest,
+    SignupRequest,
+    AuthResponse,
+    ProfileResponse,
+    ProfileUpdateRequest,
+    ChangePasswordRequest,
+)
+from .auth import create_access_token, get_current_user, hash_password, verify_password
 from .pipeline.preprocess import load_image, save_preview
 from .pipeline import run_pipeline
 
@@ -40,6 +52,87 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def _profile_from_user(user: Dict[str, Any]) -> ProfileResponse:
+    return ProfileResponse(
+        id=user["id"],
+        name=user.get("name") or "",
+        email=user.get("email") or "",
+        first_name=user.get("first_name"),
+        last_name=user.get("last_name"),
+        phone=user.get("phone"),
+        license_number=user.get("license_number"),
+        specialty=user.get("specialty"),
+        display_name=user.get("display_name"),
+    )
+
+
+@app.post("/auth/signup", response_model=AuthResponse)
+async def signup(payload: SignupRequest) -> AuthResponse:
+    if len(payload.password) < settings.password_min_length:
+        raise HTTPException(status_code=400, detail=f"Password must be at least {settings.password_min_length} characters.")
+    existing = storage.get_user_by_email(payload.email)
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered.")
+    user_id = f"user-{uuid.uuid4().hex[:12]}"
+    storage.create_user(
+        user_id=user_id,
+        name=payload.name,
+        email=payload.email,
+        password_hash=hash_password(payload.password),
+        role="doctor",
+        role_access=["doctor", "patient"],
+    )
+    user = storage.get_user_by_id(user_id)
+    token = create_access_token(user)
+    return AuthResponse(access_token=token)
+
+
+@app.post("/auth/login", response_model=AuthResponse)
+async def login(payload: LoginRequest) -> AuthResponse:
+    user = storage.get_user_by_email(payload.email)
+    if not user or not verify_password(payload.password, user.get("password_hash", "")):
+        raise HTTPException(status_code=401, detail="Invalid credentials.")
+    storage.update_user_last_login(user["id"])
+    token = create_access_token(user)
+    return AuthResponse(access_token=token)
+
+
+@app.get("/settings/profile", response_model=ProfileResponse)
+async def get_profile(current_user: Dict[str, Any] = Depends(get_current_user)) -> ProfileResponse:
+    return _profile_from_user(current_user)
+
+
+@app.post("/settings/profile", response_model=ProfileResponse)
+async def update_profile(
+    payload: ProfileUpdateRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+) -> ProfileResponse:
+    updates = payload.model_dump(exclude_unset=True)
+    email = updates.get("email")
+    if email and email.lower() != current_user.get("email"):
+        existing = storage.get_user_by_email(email)
+        if existing and existing.get("id") != current_user.get("id"):
+            raise HTTPException(status_code=400, detail="Email already in use.")
+        updates["email"] = email.lower()
+    if "name" in updates and updates["name"]:
+        updates["display_name"] = updates.get("display_name") or updates["name"]
+    user = storage.update_user_profile(current_user["id"], updates)
+    return _profile_from_user(user)
+
+
+@app.post("/settings/change-password")
+async def change_password(
+    payload: ChangePasswordRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+) -> JSONResponse:
+    if not verify_password(payload.current_password, current_user.get("password_hash", "")):
+        raise HTTPException(status_code=400, detail="Current password is incorrect.")
+    if len(payload.new_password) < settings.password_min_length:
+        raise HTTPException(status_code=400, detail=f"Password must be at least {settings.password_min_length} characters.")
+    storage.update_user_password(current_user["id"], hash_password(payload.new_password))
+    return JSONResponse(content={"status": "ok"})
 
 
 @app.post("/analyze-xray", response_model=AnalyzeResponse)
