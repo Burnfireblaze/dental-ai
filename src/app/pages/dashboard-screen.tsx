@@ -1,28 +1,76 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Activity, AlertTriangle, CheckCircle, TrendingUp, Clock } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
+import { getMetrics } from '../services/ai-api';
+import type { MetricsResponse } from '../types/ai';
+import { useCases } from '../hooks/useCases';
+
+const timeAgo = (value: string) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const diffMs = Date.now() - date.getTime();
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hours ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} days ago`;
+};
 
 export default function DashboardScreen() {
+  const { cases, loading: casesLoading } = useCases(20);
+  const [metrics, setMetrics] = useState<MetricsResponse | null>(null);
+
+  useEffect(() => {
+    getMetrics()
+      .then(setMetrics)
+      .catch(() => undefined);
+  }, []);
+
+  const urgentCount = cases.filter((case_) => case_.urgencyLevel === 'urgent').length;
+
   const stats = [
-    { label: 'Sessions Analyzed', value: '247', icon: Activity, color: 'blue' },
-    { label: 'Urgent Cases', value: '8', icon: AlertTriangle, color: 'red' },
-    { label: 'AI Acceptance Rate', value: '94%', icon: CheckCircle, color: 'green' },
-    { label: 'Corrections Made', value: '15', icon: TrendingUp, color: 'orange' },
+    { label: 'Sessions Analyzed', value: metrics ? metrics.sessions_analyzed : cases.length, icon: Activity, color: 'blue' },
+    { label: 'Urgent Cases', value: casesLoading ? '--' : urgentCount, icon: AlertTriangle, color: 'red' },
+    { label: 'AI Acceptance Rate', value: metrics ? `${metrics.acceptance_rate}%` : '0%', icon: CheckCircle, color: 'green' },
+    { label: 'Corrections Made', value: metrics ? metrics.corrections_made : 0, icon: TrendingUp, color: 'orange' },
   ];
 
-  const recentActivity = [
-    { id: 1, action: 'Analysis completed', patient: 'Patient #1234', time: '10 minutes ago', urgent: true },
-    { id: 2, action: 'AI finding accepted', patient: 'Patient #1233', time: '25 minutes ago', urgent: false },
-    { id: 3, action: 'Correction submitted', patient: 'Patient #1232', time: '1 hour ago', urgent: false },
-    { id: 4, action: 'Report generated', patient: 'Patient #1231', time: '2 hours ago', urgent: false },
-    { id: 5, action: 'Analysis completed', patient: 'Patient #1230', time: '3 hours ago', urgent: true },
-  ];
+  const recentActivity = useMemo(() => {
+    return cases.slice(0, 6).map((case_) => ({
+      id: case_.caseId,
+      action: case_.status === 'processing' ? 'Analysis in progress' : 'Analysis completed',
+      patient: case_.patientId ? `Patient ${case_.patientId}` : 'Patient',
+      caseId: case_.caseId,
+      time: timeAgo(case_.createdAt),
+      urgent: case_.urgencyLevel === 'urgent',
+    }));
+  }, [cases]);
 
-  const urgencyDistribution = [
-    { level: 'Urgent', count: 8, percentage: 65, color: 'bg-red-500' },
-    { level: 'Attention', count: 3, percentage: 25, color: 'bg-yellow-500' },
-    { level: 'Routine', count: 2, percentage: 15, color: 'bg-green-500' },
-  ];
+  const urgencyDistribution = useMemo(() => {
+    const counts = { Urgent: 0, Attention: 0, Routine: 0 };
+    cases.forEach((case_) => {
+      if (case_.urgencyLevel === 'urgent') counts.Urgent += 1;
+      else if (case_.urgencyLevel === 'attention') counts.Attention += 1;
+      else if (case_.urgencyLevel === 'routine') counts.Routine += 1;
+    });
+    const total = counts.Urgent + counts.Attention + counts.Routine || 1;
+    return [
+      { level: 'Urgent', count: counts.Urgent, percentage: Math.round((counts.Urgent / total) * 100), color: 'bg-red-500' },
+      { level: 'Attention', count: counts.Attention, percentage: Math.round((counts.Attention / total) * 100), color: 'bg-yellow-500' },
+      { level: 'Routine', count: counts.Routine, percentage: Math.round((counts.Routine / total) * 100), color: 'bg-green-500' },
+    ];
+  }, [cases]);
+
+  const processedToday = useMemo(() => {
+    const today = new Date().toDateString();
+    return cases.filter((case_) => {
+      const created = new Date(case_.createdAt);
+      return !Number.isNaN(created.getTime()) && created.toDateString() === today;
+    }).length;
+  }, [cases]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
@@ -58,6 +106,9 @@ export default function DashboardScreen() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
+              {recentActivity.length === 0 && (
+                <p className="text-sm text-gray-600">No recent activity yet.</p>
+              )}
               {recentActivity.map((activity) => (
                 <div key={activity.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50">
                   <div className="flex-1 min-w-0">
@@ -67,7 +118,9 @@ export default function DashboardScreen() {
                         <Badge variant="destructive" className="text-xs">Urgent</Badge>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600">{activity.patient}</p>
+                    <p className="text-sm text-gray-600">
+                      {activity.patient}{activity.caseId ? ` • Case ${activity.caseId}` : ''}
+                    </p>
                     <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
                       <Clock className="h-3 w-3" />
                       <span>{activity.time}</span>
@@ -86,6 +139,9 @@ export default function DashboardScreen() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
+              {cases.length === 0 && (
+                <p className="text-sm text-gray-600">No urgency data yet.</p>
+              )}
               {urgencyDistribution.map((item) => (
                 <div key={item.level}>
                   <div className="flex items-center justify-between mb-2">
@@ -108,7 +164,9 @@ export default function DashboardScreen() {
                 <div>
                   <h4 className="font-semibold text-blue-900 mb-1">System Performance</h4>
                   <p className="text-sm text-blue-800">
-                    AI acceptance rate is above target. Average processing time: 2.3 minutes per case.
+                    {metrics
+                      ? `AI acceptance rate is ${metrics.acceptance_rate}%. Average urgency score: ${metrics.average_urgency}.`
+                      : 'Metrics will appear once cases are analyzed.'}
                   </p>
                 </div>
               </div>
@@ -122,24 +180,28 @@ export default function DashboardScreen() {
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <CardContent className="p-6">
             <h3 className="font-semibold text-blue-900 mb-1">Total Processed Today</h3>
-            <p className="text-3xl font-bold text-blue-700">23</p>
-            <p className="text-sm text-blue-600 mt-1">+12% from yesterday</p>
+            <p className="text-3xl font-bold text-blue-700">{processedToday}</p>
+            <p className="text-sm text-blue-600 mt-1">Updated from live cases</p>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
           <CardContent className="p-6">
             <h3 className="font-semibold text-green-900 mb-1">Average Confidence</h3>
-            <p className="text-3xl font-bold text-green-700">96.2%</p>
-            <p className="text-sm text-green-600 mt-1">Excellent performance</p>
+            <p className="text-3xl font-bold text-green-700">
+              {metrics ? `${metrics.average_confidence}%` : '0%'}
+            </p>
+            <p className="text-sm text-green-600 mt-1">Across all findings</p>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
           <CardContent className="p-6">
             <h3 className="font-semibold text-purple-900 mb-1">AI Interactions</h3>
-            <p className="text-3xl font-bold text-purple-700">47</p>
-            <p className="text-sm text-purple-600 mt-1">Questions answered</p>
+            <p className="text-3xl font-bold text-purple-700">
+              {metrics ? metrics.total_findings : 0}
+            </p>
+            <p className="text-sm text-purple-600 mt-1">Findings analyzed</p>
           </CardContent>
         </Card>
       </div>

@@ -7,9 +7,12 @@ import type { MetricsResponse } from '../types/ai';
 
 export default function StatsCalibration() {
   const [metrics, setMetrics] = useState<MetricsResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getMetrics().then(setMetrics).catch(() => undefined);
+    getMetrics().then(setMetrics).catch((err) => {
+      setError(err instanceof Error ? err.message : 'Unable to load metrics');
+    });
   }, []);
 
   const stats = metrics
@@ -20,59 +23,40 @@ export default function StatsCalibration() {
         averageUrgency: metrics.average_urgency,
       }
     : {
-        sessionsAnalyzed: 247,
-        acceptanceRate: 94,
-        correctionsMade: 15,
-        averageUrgency: 6.2,
+        sessionsAnalyzed: 0,
+        acceptanceRate: 0,
+        correctionsMade: 0,
+        averageUrgency: 0,
       };
 
-  const calibrationData = metrics?.calibration?.length
-    ? metrics.calibration
-    : [
-        { category: 'Periapical Lesions', accepted: 42, corrected: 3, rejected: 1, accuracy: 91 },
-        { category: 'Carious Lesions', accepted: 89, corrected: 7, rejected: 2, accuracy: 91 },
-        { category: 'Bone Loss', accepted: 34, corrected: 2, rejected: 1, accuracy: 92 },
-        { category: 'Root Canal', accepted: 28, corrected: 2, rejected: 0, accuracy: 93 },
-        { category: 'Impacted Teeth', accepted: 15, corrected: 1, rejected: 0, accuracy: 94 },
-      ];
+  const calibrationData = metrics?.calibration ?? [];
 
-  const urgencyDistribution = metrics?.urgency_distribution?.length
-    ? metrics.urgency_distribution.map((item) => ({
-        level: item.level,
-        count: item.count,
-        percentage: item.percentage,
-        color: item.level.toLowerCase().includes('urgent')
-          ? 'bg-red-500'
-          : item.level.toLowerCase().includes('attention')
-          ? 'bg-yellow-500'
-          : 'bg-green-500',
-      }))
-    : [
-        { level: 'Urgent', count: 45, percentage: 18, color: 'bg-red-500' },
-        { level: 'Attention', count: 78, percentage: 32, color: 'bg-yellow-500' },
-        { level: 'Routine', count: 124, percentage: 50, color: 'bg-green-500' },
-      ];
+  const urgencyDistribution = metrics?.urgency_distribution?.map((item) => ({
+    level: item.level,
+    count: item.count,
+    percentage: item.percentage,
+    color: item.level.toLowerCase().includes('urgent')
+      ? 'bg-red-500'
+      : item.level.toLowerCase().includes('attention')
+      ? 'bg-yellow-500'
+      : 'bg-green-500',
+  })) ?? [];
 
-  const recentCorrections = metrics?.recent_corrections?.length
-    ? metrics.recent_corrections.map((item) => ({
-        id: item.id,
-        condition: item.condition,
-        originalTooth: item.original_tooth || undefined,
-        correctedTooth: item.corrected_tooth || undefined,
-        change: item.change || undefined,
-        date: item.date,
-      }))
-    : [
-        { id: 1, condition: 'Carious Lesion', originalTooth: '#14', correctedTooth: '#15', date: '2026-02-21' },
-        { id: 2, condition: 'Periapical Lesion', change: 'Urgency level adjusted', date: '2026-02-20' },
-        { id: 3, condition: 'Bone Loss', originalTooth: '#30', correctedTooth: '#31', date: '2026-02-19' },
-      ];
+  const recentCorrections = metrics?.recent_corrections?.map((item) => ({
+    id: item.id,
+    condition: item.condition,
+    originalTooth: item.original_tooth || undefined,
+    correctedTooth: item.corrected_tooth || undefined,
+    change: item.change || undefined,
+    date: item.date,
+  })) ?? [];
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Stats & Calibration</h1>
         <p className="text-gray-600 mt-1">AI performance metrics and calibration data</p>
+        {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
       </div>
 
       {/* Overview Stats */}
@@ -96,7 +80,7 @@ export default function StatsCalibration() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Acceptance Rate</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.acceptanceRate}%</p>
+                <p className="text-3xl font-bold text-gray-900">{`${stats.acceptanceRate}%`}</p>
               </div>
               <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
                 <CheckCircle className="h-6 w-6 text-green-600" />
@@ -164,6 +148,9 @@ export default function StatsCalibration() {
                   </div>
                 </div>
               ))}
+              {!calibrationData.length && (
+                <p className="text-sm text-gray-600">No calibration data yet.</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -191,6 +178,9 @@ export default function StatsCalibration() {
                   </div>
                 </div>
               ))}
+              {!urgencyDistribution.length && (
+                <p className="text-sm text-gray-600">No urgency data yet.</p>
+              )}
             </div>
 
             <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -199,7 +189,9 @@ export default function StatsCalibration() {
                 <div className="text-sm">
                   <p className="font-semibold text-blue-900 mb-1">Distribution Analysis</p>
                   <p className="text-blue-800">
-                    50% of cases are routine, indicating good preventive care. Urgent cases (18%) are within normal range for clinical practice.
+                    {urgencyDistribution.length
+                      ? `Routine cases are ${urgencyDistribution.find((item) => item.level.toLowerCase().includes('routine'))?.percentage ?? 0}% of total. Urgent cases are ${urgencyDistribution.find((item) => item.level.toLowerCase().includes('urgent'))?.percentage ?? 0}%.`
+                      : 'Distribution insights will appear once cases are analyzed.'}
                   </p>
                 </div>
               </div>
@@ -231,6 +223,9 @@ export default function StatsCalibration() {
                 </div>
               </div>
             ))}
+            {!recentCorrections.length && (
+              <p className="text-sm text-gray-600">No corrections recorded yet.</p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -240,24 +235,46 @@ export default function StatsCalibration() {
         <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
           <CardContent className="p-6">
             <h3 className="font-semibold text-green-900 mb-1">Overall Performance</h3>
-            <p className="text-3xl font-bold text-green-700">Excellent</p>
-            <p className="text-sm text-green-600 mt-1">94% acceptance rate</p>
+            <p className="text-3xl font-bold text-green-700">
+              {metrics
+                ? metrics.acceptance_rate >= 90
+                  ? 'Excellent'
+                  : metrics.acceptance_rate >= 75
+                  ? 'Good'
+                  : 'Review'
+                : '--'}
+            </p>
+            <p className="text-sm text-green-600 mt-1">
+              {metrics ? `${metrics.acceptance_rate}% acceptance rate` : 'No data yet'}
+            </p>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <CardContent className="p-6">
             <h3 className="font-semibold text-blue-900 mb-1">Calibration Status</h3>
-            <p className="text-3xl font-bold text-blue-700">Optimal</p>
-            <p className="text-sm text-blue-600 mt-1">Well-calibrated system</p>
+            <p className="text-3xl font-bold text-blue-700">
+              {metrics
+                ? metrics.corrections_made <= Math.max(metrics.total_findings * 0.1, 1)
+                  ? 'Stable'
+                  : 'Review'
+                : '--'}
+            </p>
+            <p className="text-sm text-blue-600 mt-1">
+              {metrics ? `${metrics.corrections_made} corrections logged` : 'No data yet'}
+            </p>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
           <CardContent className="p-6">
             <h3 className="font-semibold text-purple-900 mb-1">Improvement</h3>
-            <p className="text-3xl font-bold text-purple-700">+2.3%</p>
-            <p className="text-sm text-purple-600 mt-1">vs. last month</p>
+            <p className="text-3xl font-bold text-purple-700">
+              {metrics ? `${metrics.feedback_count}` : '--'}
+            </p>
+            <p className="text-sm text-purple-600 mt-1">
+              {metrics ? 'Feedback entries recorded' : 'No data yet'}
+            </p>
           </CardContent>
         </Card>
       </div>

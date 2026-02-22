@@ -6,6 +6,8 @@ import type {
   FeedbackRequest,
   JobResponse,
   MetricsResponse,
+  CasesResponse,
+  CaseSummary,
   AssistantChatRequest,
   AssistantChatResponse,
   SummaryResponse,
@@ -59,6 +61,17 @@ const mapCase = (data: ApiCaseData): CaseData => ({
     priorityFindings: data.urgency.priority_findings,
     recommendation: data.urgency.recommendation,
   },
+});
+
+const mapCaseSummary = (item: CasesResponse["cases"][number]): CaseSummary => ({
+  caseId: item.case_id,
+  patientId: item.patient_id ?? null,
+  createdAt: item.created_at,
+  status: item.status ?? null,
+  urgencyLevel: item.urgency_level ?? null,
+  findingsCount: item.findings_count,
+  summary: item.summary,
+  previewUrl: item.preview_url ? buildUrl(item.preview_url) : null,
 });
 
 export async function analyzeXray(payload: {
@@ -121,6 +134,15 @@ export async function getMetrics(): Promise<MetricsResponse> {
     throw new Error("Failed to fetch metrics");
   }
   return response.json();
+}
+
+export async function listCases(limit = 20): Promise<CaseSummary[]> {
+  const response = await fetch(buildUrl(`/cases?limit=${limit}`));
+  if (!response.ok) {
+    throw new Error("Failed to fetch cases");
+  }
+  const data: CasesResponse = await response.json();
+  return data.cases.map(mapCaseSummary);
 }
 
 export async function chatAssistant(

@@ -145,6 +145,43 @@ async def get_case(case_id: str) -> JSONResponse:
     return JSONResponse(content=payload)
 
 
+@app.get("/cases")
+async def list_cases(limit: int = 20) -> JSONResponse:
+    cases = storage.list_cases(limit=limit)
+    summaries = []
+    for case in cases:
+        result = case.get("result") or {}
+        findings = result.get("findings", []) if isinstance(result, dict) else []
+        urgency = result.get("urgency", {}) if isinstance(result, dict) else {}
+        urgency_level = urgency.get("level")
+        if not urgency_level:
+            if any(f.get("severity") == "urgent" for f in findings):
+                urgency_level = "urgent"
+            elif any(f.get("severity") == "attention" for f in findings):
+                urgency_level = "attention"
+            elif findings:
+                urgency_level = "routine"
+        summary = "Processing"
+        if findings:
+            summary = findings[0].get("label") or "Findings available"
+        elif case.get("status") == "complete":
+            summary = "No significant findings"
+
+        summaries.append(
+            {
+                "case_id": case.get("case_id"),
+                "patient_id": case.get("patient_id"),
+                "created_at": case.get("created_at"),
+                "status": case.get("status"),
+                "urgency_level": urgency_level,
+                "findings_count": len(findings),
+                "summary": summary,
+                "preview_url": f"/cases/{case.get('case_id')}/preview",
+            }
+        )
+    return JSONResponse(content={"cases": summaries})
+
+
 @app.get("/cases/{case_id}/preview")
 async def get_preview(case_id: str) -> FileResponse:
     case = storage.get_case(case_id)
