@@ -4,6 +4,7 @@ import { Button } from '../components/ui/button';
 import { Textarea } from '../components/ui/textarea';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
+import { chatAssistant } from '../services/ai-api';
 
 export default function AIAssistant() {
   const [messages, setMessages] = useState([
@@ -26,7 +27,7 @@ export default function AIAssistant() {
     'Post-treatment monitoring protocols',
   ];
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim()) return;
 
     const userMessage = {
@@ -36,21 +37,29 @@ export default function AIAssistant() {
       timestamp: new Date(),
     };
 
-    setMessages([...messages, userMessage]);
+    const nextMessages = [...messages, userMessage];
+    setMessages(nextMessages);
     setInput('');
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      const history = nextMessages.map((m) => ({ role: m.role, content: m.content }));
+      const result = await chatAssistant({ message: userMessage.content, history });
       const aiMessage = {
-        id: messages.length + 2,
+        id: nextMessages.length + 1,
         role: 'assistant',
-        content: 'Based on current clinical guidelines, here\'s what I recommend:\n\nFor periapical lesions, the standard approach involves:\n\n1. **Pulp Vitality Testing**: Use cold test or electric pulp tester to assess tooth vitality\n\n2. **Treatment Options**:\n   • Root canal therapy (if tooth is salvageable)\n   • Extraction (if tooth is non-restorable)\n   • Apicoectomy (in certain cases)\n\n3. **Patient Discussion Points**:\n   • Explain the infection and its progression\n   • Discuss treatment success rates (90-95% for RCT)\n   • Review timeline and costs\n   • Address pain management\n\nWould you like me to generate patient education materials or provide more details on any specific aspect?',
+        content: result.response || 'No response from assistant.',
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, aiMessage]);
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        { id: prev.length + 1, role: 'assistant', content: 'Assistant unavailable.', timestamp: new Date() },
+      ]);
+    } finally {
       setIsTyping(false);
-    }, 2000);
+    }
   };
 
   const handlePromptClick = (prompt: string) => {

@@ -4,6 +4,7 @@ import { Textarea } from '../ui/textarea';
 import { Send, Bot, User } from 'lucide-react';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
+import { chatAssistant } from '../../services/ai-api';
 
 interface AIAssistantTabProps {
   caseId: string;
@@ -28,7 +29,7 @@ export default function AIAssistantTab({ caseId }: AIAssistantTabProps) {
     'What are differential diagnoses?',
   ];
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim()) return;
 
     const userMessage = {
@@ -38,21 +39,29 @@ export default function AIAssistantTab({ caseId }: AIAssistantTabProps) {
       timestamp: new Date(),
     };
 
-    setMessages([...messages, userMessage]);
+    const nextMessages = [...messages, userMessage];
+    setMessages(nextMessages);
     setInput('');
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      const history = nextMessages.map((m) => ({ role: m.role, content: m.content }));
+      const result = await chatAssistant({ message: userMessage.content, case_id: caseId, history });
       const aiMessage = {
-        id: messages.length + 2,
+        id: nextMessages.length + 1,
         role: 'assistant',
-        content: 'Based on the detected periapical lesion on tooth #19, I recommend endodontic evaluation as the first priority. The lesion appears to be associated with the apex of the root, suggesting possible pulpal necrosis. Consider:\n\n1. Pulp vitality testing\n2. Root canal treatment vs. extraction discussion\n3. Follow-up radiograph in 3-6 months if treated\n\nWould you like me to provide patient education materials for this condition?',
+        content: result.response || 'No response from assistant.',
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, aiMessage]);
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        { id: prev.length + 1, role: 'assistant', content: 'Assistant unavailable.', timestamp: new Date() },
+      ]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   const handlePromptClick = (prompt: string) => {

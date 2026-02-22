@@ -154,3 +154,20 @@ export interface MetricsResponse {
   urgency_distribution: MetricUrgencyItem[];
   recent_corrections: MetricCorrectionItem[];
 }
+
+export interface AssistantMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface AssistantChatRequest {
+  message: string;
+  case_id?: string | null;
+  doctor_name?: string | null;
+  history?: AssistantMessage[];
+}
+
+export interface AssistantChatResponse {
+  response: string;
+  tools_used: string[];
+}

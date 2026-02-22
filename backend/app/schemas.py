@@ -87,6 +87,23 @@ class FeedbackRequest(BaseModel):
     actions: List[FeedbackAction]
 
 
+class AssistantMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class AssistantChatRequest(BaseModel):
+    message: str
+    case_id: Optional[str] = None
+    doctor_name: Optional[str] = None
+    history: List[AssistantMessage] = []
+
+
+class AssistantChatResponse(BaseModel):
+    response: str
+    tools_used: List[str] = []
+
+
 class MetricCalibrationItem(BaseModel):
     category: str
     accepted: int

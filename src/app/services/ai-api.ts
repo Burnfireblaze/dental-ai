@@ -6,6 +6,8 @@ import type {
   FeedbackRequest,
   JobResponse,
   MetricsResponse,
+  AssistantChatRequest,
+  AssistantChatResponse,
 } from '../types/ai';
 
 const API_BASE = (import.meta as any).env?.VITE_AI_API_BASE_URL || 'http://localhost:8000';
@@ -115,6 +117,18 @@ export async function getMetrics(): Promise<MetricsResponse> {
   const response = await fetch(buildUrl('/metrics'));
   if (!response.ok) {
     throw new Error('Failed to fetch metrics');
+  }
+  return response.json();
+}
+
+export async function chatAssistant(payload: AssistantChatRequest): Promise<AssistantChatResponse> {
+  const response = await fetch(buildUrl('/assistant/chat'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to fetch assistant response');
   }
   return response.json();
 }
