@@ -1,22 +1,33 @@
 from __future__ import annotations
 
 import uuid
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
+from fastapi.staticfiles import StaticFiles
 
 from .settings import settings, ensure_directories
 from . import storage
 from .jobs import JobManager
+from .schemas import (
+    AnalyzeResponse,
+    JobStatus,
+    CaseData,
+    FeedbackRequest,
+    AssistantChatRequest,
+    AssistantChatResponse,
+)
 from .schemas import AnalyzeResponse, JobStatus, CaseData, FeedbackRequest
 from .pipeline.preprocess import load_image, save_preview
 from .pipeline import run_pipeline
 from . import summarizer
+from . import assistant
 
 
 app = FastAPI(title="Dental AI Inference Service")
@@ -41,6 +52,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Optional: serve frontend build from /app/frontend when running single-container
+frontend_dir = Path(os.environ.get("FRONTEND_DIST", "/app/frontend"))
+if frontend_dir.exists():
+    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
 
 
 @app.post("/analyze-xray", response_model=AnalyzeResponse)
@@ -180,6 +196,10 @@ async def submit_feedback(payload: FeedbackRequest) -> JSONResponse:
     storage.save_feedback(payload.case_id, payload.model_dump())
     return JSONResponse(content={"status": "ok"})
 
+@app.post("/assistant/chat", response_model=AssistantChatResponse)
+async def assistant_chat(payload: AssistantChatRequest) -> AssistantChatResponse:
+    result = assistant.chat(payload.message, payload.case_id, [m.model_dump() for m in payload.history])
+    return AssistantChatResponse(**result)
 
 @app.get("/metrics")
 async def get_metrics() -> JSONResponse:
