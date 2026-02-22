@@ -6,19 +6,23 @@ import type {
   FeedbackRequest,
   JobResponse,
   MetricsResponse,
-} from '../types/ai';
+  AssistantChatRequest,
+  AssistantChatResponse,
+  SummaryResponse,
+} from "../types/ai";
 
-const API_BASE = (import.meta as any).env?.VITE_AI_API_BASE_URL || 'http://localhost:8000';
+const API_BASE =
+  (import.meta as any).env?.VITE_AI_API_BASE_URL || "http://localhost:8000";
 
-const normalizeBase = (base: string) => base.replace(/\/$/, '');
+const normalizeBase = (base: string) => base.replace(/\/$/, "");
 
 const buildUrl = (path: string) => {
   const base = normalizeBase(API_BASE);
-  if (path.startsWith('http')) return path;
-  return `${base}${path.startsWith('/') ? '' : '/'}${path}`;
+  if (path.startsWith("http")) return path;
+  return `${base}${path.startsWith("/") ? "" : "/"}${path}`;
 };
 
-const mapFinding = (finding: ApiCaseData['findings'][number]): Finding => ({
+const mapFinding = (finding: ApiCaseData["findings"][number]): Finding => ({
   id: finding.id,
   tooth: finding.tooth,
   label: finding.label,
@@ -31,7 +35,7 @@ const mapFinding = (finding: ApiCaseData['findings'][number]): Finding => ({
   timeline: finding.timeline,
   action: finding.action,
   modality: finding.modality,
-  status: finding.status ?? 'pending',
+  status: finding.status ?? "pending",
 });
 
 const mapCase = (data: ApiCaseData): CaseData => ({
@@ -64,18 +68,18 @@ export async function analyzeXray(payload: {
   modality?: string;
 }): Promise<AnalyzeResponse> {
   const body = new FormData();
-  body.append('file', payload.file);
-  if (payload.doctorNotes) body.append('doctor_notes', payload.doctorNotes);
-  if (payload.patientId) body.append('patient_id', payload.patientId);
-  if (payload.modality) body.append('modality', payload.modality);
+  body.append("file", payload.file);
+  if (payload.doctorNotes) body.append("doctor_notes", payload.doctorNotes);
+  if (payload.patientId) body.append("patient_id", payload.patientId);
+  if (payload.modality) body.append("modality", payload.modality);
 
-  const response = await fetch(buildUrl('/analyze-xray'), {
-    method: 'POST',
+  const response = await fetch(buildUrl("/analyze-xray"), {
+    method: "POST",
     body,
   });
 
   if (!response.ok) {
-    throw new Error('Failed to upload X-ray');
+    throw new Error("Failed to upload X-ray");
   }
   return response.json();
 }
@@ -83,7 +87,7 @@ export async function analyzeXray(payload: {
 export async function getJob(jobId: string): Promise<JobResponse> {
   const response = await fetch(buildUrl(`/analysis/${jobId}`));
   if (!response.ok) {
-    throw new Error('Failed to fetch job status');
+    throw new Error("Failed to fetch job status");
   }
   return response.json();
 }
@@ -94,27 +98,80 @@ export async function getCase(caseId: string): Promise<CaseData | null> {
     return null;
   }
   if (!response.ok) {
-    throw new Error('Failed to fetch case data');
+    throw new Error("Failed to fetch case data");
   }
   const data: ApiCaseData = await response.json();
   return mapCase(data);
 }
 
 export async function sendFeedback(payload: FeedbackRequest): Promise<void> {
-  const response = await fetch(buildUrl('/feedback'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+  const response = await fetch(buildUrl("/feedback"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
-    throw new Error('Failed to submit feedback');
+    throw new Error("Failed to submit feedback");
   }
 }
 
 export async function getMetrics(): Promise<MetricsResponse> {
-  const response = await fetch(buildUrl('/metrics'));
+  const response = await fetch(buildUrl("/metrics"));
   if (!response.ok) {
-    throw new Error('Failed to fetch metrics');
+    throw new Error("Failed to fetch metrics");
   }
   return response.json();
+}
+
+export async function chatAssistant(
+  payload: AssistantChatRequest,
+): Promise<AssistantChatResponse> {
+  const response = await fetch(buildUrl("/assistant/chat"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    throw new Error("Failed to fetch assistant response");
+  }
+  return response.json();
+}
+
+export async function summarizeFindings(payload: {
+  patientId?: string | null;
+  findings: Finding[];
+  doctorNotes?: string;
+}): Promise<SummaryResponse> {
+  const body = {
+    approved: true,
+    patient_id: payload.patientId,
+    doctor_notes: payload.doctorNotes,
+    findings: payload.findings.map((f) => ({
+      tooth: f.tooth,
+      label: f.label,
+      severity: f.severity,
+      confidence: f.confidence > 1 ? f.confidence / 100 : f.confidence,
+      status: f.status,
+    })),
+  };
+
+  const response = await fetch(buildUrl("/api/summarize"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.error || "Failed to generate summary");
+  }
+
+  return {
+    patientId: data.patient_id ?? payload.patientId ?? null,
+    clinicalSummary: data.clinical_summary,
+    riskLevel: data.risk_level,
+    urgency: data.urgency,
+    patientExplanation: data.patient_explanation,
+    recommendedActions: data.recommended_actions || [],
+  };
 }

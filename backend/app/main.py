@@ -1,21 +1,33 @@
 from __future__ import annotations
 
-import json
 import uuid
+import os
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel
+from fastapi.staticfiles import StaticFiles
 
 from .settings import settings, ensure_directories
 from . import storage
 from .jobs import JobManager
+from .schemas import (
+    AnalyzeResponse,
+    JobStatus,
+    CaseData,
+    FeedbackRequest,
+    AssistantChatRequest,
+    AssistantChatResponse,
+)
 from .schemas import AnalyzeResponse, JobStatus, CaseData, FeedbackRequest
 from .pipeline.preprocess import load_image, save_preview
 from .pipeline import run_pipeline
+from . import summarizer
+from . import assistant
 
 
 app = FastAPI(title="Dental AI Inference Service")
@@ -40,6 +52,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Optional: serve frontend build from /app/frontend when running single-container
+frontend_dir = Path(os.environ.get("FRONTEND_DIST", "/app/frontend"))
+if frontend_dir.exists():
+    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
 
 
 @app.post("/analyze-xray", response_model=AnalyzeResponse)
@@ -179,8 +196,50 @@ async def submit_feedback(payload: FeedbackRequest) -> JSONResponse:
     storage.save_feedback(payload.case_id, payload.model_dump())
     return JSONResponse(content={"status": "ok"})
 
+@app.post("/assistant/chat", response_model=AssistantChatResponse)
+async def assistant_chat(payload: AssistantChatRequest) -> AssistantChatResponse:
+    result = assistant.chat(payload.message, payload.case_id, [m.model_dump() for m in payload.history])
+    return AssistantChatResponse(**result)
 
 @app.get("/metrics")
 async def get_metrics() -> JSONResponse:
     metrics = storage.build_metrics()
     return JSONResponse(content=metrics)
+
+
+# --------------------------------------------------------------------------- #
+# Summarization Endpoint
+# --------------------------------------------------------------------------- #
+
+
+class SummarizeRequest(BaseModel):
+    approved: bool
+    findings: List[Dict[str, Any]]
+    patient_id: Optional[str] = None
+    doctor_notes: Optional[str] = ""
+    image_type: Optional[str] = "panoramic"
+
+
+class SummaryResponse(BaseModel):
+    patient_id: Optional[str] = None
+    clinical_summary: str
+    risk_level: str
+    urgency: str
+    patient_explanation: str
+    recommended_actions: List[str]
+
+
+@app.post("/api/summarize", response_model=SummaryResponse)
+async def summarize_findings(payload: SummarizeRequest) -> JSONResponse:
+    if not payload.approved:
+        return JSONResponse(status_code=400, content={"error": "Findings must be approved before summary generation."})
+    if not payload.findings:
+        return JSONResponse(status_code=400, content={"error": "No findings provided."})
+
+    summary = summarizer.generate_summary(
+        findings=payload.findings,
+        patient_id=payload.patient_id,
+        doctor_notes=payload.doctor_notes or "",
+        image_type=payload.image_type or "panoramic",
+    )
+    return JSONResponse(content=summary)

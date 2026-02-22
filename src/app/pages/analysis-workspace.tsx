@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router';
+import { useParams, useNavigate, useLocation } from 'react-router';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import UrgencyDashboard from '../components/analysis/urgency-dashboard';
 import XRayViewer from '../components/analysis/xray-viewer';
@@ -7,19 +7,22 @@ import ToothChart from '../components/analysis/tooth-chart';
 import FindingsTab from '../components/analysis/findings-tab';
 import ClinicalReportTab from '../components/analysis/clinical-report-tab';
 import AIAssistantTab from '../components/analysis/ai-assistant-tab';
+import SummaryTab from '../components/analysis/summary-tab';
 import { Button } from '../components/ui/button';
 import { ChevronLeft, Download } from 'lucide-react';
-import { useNavigate } from 'react-router';
 import { Card, CardContent } from '../components/ui/card';
 import { useCaseAnalysis } from '../hooks/useCaseAnalysis';
+import type { SummaryResponse } from '../types/ai';
 
 export default function AnalysisWorkspace() {
   const { caseId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [showAnnotations, setShowAnnotations] = useState(true);
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null);
   const [toothChartExpanded, setToothChartExpanded] = useState(false);
   const [selectedFindingId, setSelectedFindingId] = useState<number | null>(null);
+  const [summary, setSummary] = useState<SummaryResponse | null>(null);
   const { caseData, status, error } = useCaseAnalysis(caseId);
 
   const findings = caseData?.findings ?? [];
@@ -67,6 +70,35 @@ export default function AnalysisWorkspace() {
     setSelectedFindingId(null);
     setSelectedTooth(null);
   }, [caseId]);
+
+  // load stored summary (generated in review screen)
+  useEffect(() => {
+    if (!caseId) {
+      setSummary(null);
+      return;
+    }
+    const stored = sessionStorage.getItem(`case-summary-${caseId}`);
+    if (stored) {
+      try {
+        setSummary(JSON.parse(stored));
+      } catch {
+        setSummary(null);
+      }
+    } else {
+      setSummary(null);
+    }
+  }, [caseId]);
+
+  const initialTab = useMemo(() => {
+    const tab = new URLSearchParams(location.search).get('tab');
+    return tab || 'findings';
+  }, [location.search]);
+
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -137,11 +169,12 @@ export default function AnalysisWorkspace() {
 
           {/* Right Column - Tabs */}
           <div className="lg:col-span-1">
-            <Tabs defaultValue="findings" className="w-full">
-              <TabsList className="w-full grid grid-cols-3">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="w-full grid grid-cols-4">
                 <TabsTrigger value="findings">Findings</TabsTrigger>
                 <TabsTrigger value="report">Report</TabsTrigger>
                 <TabsTrigger value="ai">AI Chat</TabsTrigger>
+                <TabsTrigger value="summary">Summary</TabsTrigger>
               </TabsList>
               
               <TabsContent value="findings" className="mt-4">
@@ -154,6 +187,13 @@ export default function AnalysisWorkspace() {
               
               <TabsContent value="ai" className="mt-4">
                 <AIAssistantTab caseId={caseId!} />
+              </TabsContent>
+
+              <TabsContent value="summary" className="mt-4">
+                <SummaryTab
+                  summary={summary}
+                  emptyHint="No clinical summary yet. Approve findings and generate from the Review Findings page."
+                />
               </TabsContent>
             </Tabs>
           </div>
@@ -189,11 +229,12 @@ export default function AnalysisWorkspace() {
             />
           )}
 
-          <Tabs defaultValue="findings" className="w-full">
-            <TabsList className="w-full grid grid-cols-3">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="w-full grid grid-cols-4">
               <TabsTrigger value="findings" className="text-xs sm:text-sm">Findings</TabsTrigger>
               <TabsTrigger value="report" className="text-xs sm:text-sm">Report</TabsTrigger>
               <TabsTrigger value="ai" className="text-xs sm:text-sm">AI Chat</TabsTrigger>
+              <TabsTrigger value="summary" className="text-xs sm:text-sm">Summary</TabsTrigger>
             </TabsList>
             
             <TabsContent value="findings" className="mt-4">
@@ -206,6 +247,13 @@ export default function AnalysisWorkspace() {
             
             <TabsContent value="ai" className="mt-4">
               <AIAssistantTab caseId={caseId!} />
+            </TabsContent>
+
+            <TabsContent value="summary" className="mt-4">
+              <SummaryTab
+                summary={summary}
+                emptyHint="No clinical summary yet. Approve findings and generate from the Review Findings page."
+              />
             </TabsContent>
           </Tabs>
         </div>
