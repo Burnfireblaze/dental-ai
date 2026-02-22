@@ -76,7 +76,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
     },
   ];
 
-  const stats = [{ value: "<2s", label: "Average Analysis Time" }];
+  const stats = [{ value: "<5s", label: "Average Analysis Time" }];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex">
@@ -95,7 +95,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
               <DentalAILogoBlue className="h-full w-full" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">DentalAI</h1>
+              <h1 className="text-2xl font-bold text-white">DentAI</h1>
               <p className="text-blue-100 text-sm">
                 Clinical Intelligence Platform
               </p>

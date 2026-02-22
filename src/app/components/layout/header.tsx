@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import RoleSwitcher from "./role-switcher";
+import { DentalAILogo, DentalAILogoBlue } from "../dental-ai-logo";
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -23,22 +24,27 @@ export default function Header({ onMenuClick }: HeaderProps) {
           </Button>
 
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <Activity className="h-5 w-5 text-white" />
+            <div className="h-9 w-9 bg-blue-600 rounded-2xl flex items-center justify-center shadow-sm">
+              <DentalAILogo />
             </div>
-            <span className="font-semibold text-lg hidden sm:block">
-              DentAI
-            </span>
+            <div className="hidden sm:block">
+              <span className="font-semibold text-lg leading-tight">
+                DentAI
+              </span>
+              <p className="text-xs text-gray-500">
+                Clinical Intelligence Platform
+              </p>
+            </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-4">
           <RoleSwitcher />
 
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-full">
+          {/* <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-full">
             <div className="h-2 w-2 bg-green-500 rounded-full" />
             <span className="text-sm text-green-700">System Active</span>
-          </div>
+          </div> */}
 
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-5 w-5" />

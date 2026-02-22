@@ -273,9 +273,18 @@ def build_metrics() -> Dict[str, Any]:
     accepted = len([f for f in findings if f.get("status") == "accepted"])
     corrected = len([f for f in findings if f.get("status") == "corrected"])
     rejected = len([f for f in findings if f.get("status") == "rejected"])
+    confidence_values = [
+        float(f.get("confidence"))
+        for f in findings
+        if isinstance(f.get("confidence"), (int, float))
+    ]
 
     acceptance_rate = round((accepted / total_findings) * 100, 1)
     average_urgency = round(sum(urgency_scores) / max(len(urgency_scores), 1), 1)
+    average_confidence = round(
+        (sum(confidence_values) / max(len(confidence_values), 1)) * 100,
+        1,
+    )
 
     # Calibration by category
     category_stats: Dict[str, Dict[str, int]] = {}
@@ -329,10 +338,10 @@ def build_metrics() -> Dict[str, Any]:
         actions = payload.get("actions", [])
         if not actions:
             continue
-        action = actions[0]
+        action = actions[0] or {}
         change = action.get("notes") or action.get("action", "Correction")
-        before = action.get("before", {})
-        after = action.get("after", {})
+        before = action.get("before") or {}
+        after = action.get("after") or {}
         recent_corrections.append(
             {
                 "id": item["id"],
@@ -349,6 +358,9 @@ def build_metrics() -> Dict[str, Any]:
         "acceptance_rate": acceptance_rate,
         "corrections_made": corrected,
         "average_urgency": average_urgency,
+        "average_confidence": average_confidence,
+        "total_findings": len(findings),
+        "feedback_count": len(recent_feedback),
         "calibration": calibration,
         "urgency_distribution": urgency_distribution,
         "recent_corrections": recent_corrections,

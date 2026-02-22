@@ -131,6 +131,9 @@ class Metrics(BaseModel):
     acceptance_rate: float
     corrections_made: int
     average_urgency: float
+    average_confidence: float
+    total_findings: int
+    feedback_count: int
     calibration: List[MetricCalibrationItem]
     urgency_distribution: List[MetricUrgencyItem]
     recent_corrections: List[MetricCorrectionItem]

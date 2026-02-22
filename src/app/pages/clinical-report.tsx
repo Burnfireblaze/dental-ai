@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router";
 import { ChevronLeft, Download, Send, Printer } from "lucide-react";
 import { Button } from "../components/ui/button";
@@ -15,6 +16,48 @@ export default function ClinicalReport() {
   const { caseId } = useParams();
   const navigate = useNavigate();
   const { caseData } = useCaseAnalysis(caseId);
+  const reportRef = useRef<HTMLDivElement | null>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleDownload = async () => {
+    if (!reportRef.current || downloading) return;
+    setDownloading(true);
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const { jsPDF } = await import("jspdf");
+      const canvas = await html2canvas(reportRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "pt", "a4");
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position -= pageHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save(`Clinical-Report-${caseId || "case"}.pdf`);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const reportData = caseData
     ? {
@@ -64,7 +107,7 @@ export default function ClinicalReport() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handlePrint}>
               <Printer className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Print</span>
             </Button>
@@ -72,9 +115,9 @@ export default function ClinicalReport() {
               <Send className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Share</span>
             </Button>
-            <Button size="sm">
+            <Button size="sm" onClick={handleDownload} disabled={downloading}>
               <Download className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Download PDF</span>
+              <span className="hidden sm:inline">{downloading ? "Preparing..." : "Download PDF"}</span>
             </Button>
           </div>
         </div>
@@ -82,7 +125,7 @@ export default function ClinicalReport() {
 
       <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
         {/* Report Content */}
-        <Card className="mb-6">
+        <Card className="mb-6" ref={reportRef}>
           <CardContent className="p-6 sm:p-8">
             {/* Header */}
             <div className="mb-8">
