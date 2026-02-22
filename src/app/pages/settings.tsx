@@ -1,19 +1,26 @@
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Avatar, AvatarFallback } from '../components/ui/avatar';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Switch } from '../components/ui/switch';
-import { Separator } from '../components/ui/separator';
-import { Badge } from '../components/ui/badge';
-import { CheckCircle } from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Avatar, AvatarFallback } from "../components/ui/avatar";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Switch } from "../components/ui/switch";
+import { Separator } from "../components/ui/separator";
+import { Badge } from "../components/ui/badge";
+import { CheckCircle } from "lucide-react";
 
 export default function Settings() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-        <p className="text-gray-600 mt-1">Manage your profile and preferences</p>
+        <p className="text-gray-600 mt-1">
+          Manage your profile and preferences
+        </p>
       </div>
 
       {/* Profile */}
@@ -25,7 +32,9 @@ export default function Settings() {
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               <Avatar className="h-20 w-20">
-                <AvatarFallback className="bg-blue-100 text-blue-700 text-2xl">DR</AvatarFallback>
+                <AvatarFallback className="bg-blue-100 text-blue-700 text-2xl">
+                  DR
+                </AvatarFallback>
               </Avatar>
               <div>
                 <h3 className="font-semibold text-gray-900">Dr. Rodriguez</h3>
@@ -49,7 +58,11 @@ export default function Settings() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" defaultValue="dr.rodriguez@dentalclinic.com" />
+                <Input
+                  id="email"
+                  type="email"
+                  defaultValue="dr.rodriguez@dentalclinic.com"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone</Label>
@@ -81,8 +94,12 @@ export default function Settings() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <p className="font-medium text-gray-900">Urgent Findings Alert</p>
-                <p className="text-sm text-gray-600">Receive immediate notifications for urgent cases</p>
+                <p className="font-medium text-gray-900">
+                  Urgent Findings Alert
+                </p>
+                <p className="text-sm text-gray-600">
+                  Receive immediate notifications for urgent cases
+                </p>
               </div>
               <Switch defaultChecked />
             </div>
@@ -92,7 +109,9 @@ export default function Settings() {
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <p className="font-medium text-gray-900">Analysis Complete</p>
-                <p className="text-sm text-gray-600">Notify when AI analysis is finished</p>
+                <p className="text-sm text-gray-600">
+                  Notify when AI analysis is finished
+                </p>
               </div>
               <Switch defaultChecked />
             </div>
@@ -102,7 +121,9 @@ export default function Settings() {
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <p className="font-medium text-gray-900">Weekly Summary</p>
-                <p className="text-sm text-gray-600">Receive weekly performance reports</p>
+                <p className="text-sm text-gray-600">
+                  Receive weekly performance reports
+                </p>
               </div>
               <Switch defaultChecked />
             </div>
@@ -112,7 +133,9 @@ export default function Settings() {
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <p className="font-medium text-gray-900">AI Updates</p>
-                <p className="text-sm text-gray-600">Notifications about new AI features</p>
+                <p className="text-sm text-gray-600">
+                  Notifications about new AI features
+                </p>
               </div>
               <Switch />
             </div>
@@ -129,8 +152,12 @@ export default function Settings() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <p className="font-medium text-gray-900">Auto-suggest Treatment Plans</p>
-                <p className="text-sm text-gray-600">AI automatically suggests treatment sequences</p>
+                <p className="font-medium text-gray-900">
+                  Auto-suggest Treatment Plans
+                </p>
+                <p className="text-sm text-gray-600">
+                  AI automatically suggests treatment sequences
+                </p>
               </div>
               <Switch defaultChecked />
             </div>
@@ -139,8 +166,12 @@ export default function Settings() {
 
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <p className="font-medium text-gray-900">Patient Education Materials</p>
-                <p className="text-sm text-gray-600">Generate patient-friendly explanations</p>
+                <p className="font-medium text-gray-900">
+                  Patient Education Materials
+                </p>
+                <p className="text-sm text-gray-600">
+                  Generate patient-friendly explanations
+                </p>
               </div>
               <Switch defaultChecked />
             </div>
@@ -150,7 +181,9 @@ export default function Settings() {
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <p className="font-medium text-gray-900">Clinical References</p>
-                <p className="text-sm text-gray-600">Include literature references in responses</p>
+                <p className="text-sm text-gray-600">
+                  Include literature references in responses
+                </p>
               </div>
               <Switch defaultChecked />
             </div>
@@ -159,11 +192,21 @@ export default function Settings() {
 
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <p className="font-medium text-gray-900">Confidence Threshold</p>
-                <p className="text-sm text-gray-600">Minimum confidence level for AI suggestions</p>
+                <p className="font-medium text-gray-900">
+                  Confidence Threshold
+                </p>
+                <p className="text-sm text-gray-600">
+                  Minimum confidence level for AI suggestions
+                </p>
               </div>
               <div className="flex items-center gap-2">
-                <Input type="number" defaultValue="85" className="w-20" min="0" max="100" />
+                <Input
+                  type="number"
+                  defaultValue="85"
+                  className="w-20"
+                  min="0"
+                  max="100"
+                />
                 <span className="text-sm text-gray-600">%</span>
               </div>
             </div>
@@ -191,7 +234,7 @@ export default function Settings() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-gray-600">AI Model Version</p>
-                <p className="font-medium text-gray-900">DentalAI v2.3.1</p>
+                <p className="font-medium text-gray-900">DentAI v2.3.1</p>
               </div>
               <div>
                 <p className="text-gray-600">Last Updated</p>
@@ -211,7 +254,8 @@ export default function Settings() {
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-900">
-                <strong>Next Scheduled Maintenance:</strong> February 28, 2026, 2:00 AM - 4:00 AM EST
+                <strong>Next Scheduled Maintenance:</strong> February 28, 2026,
+                2:00 AM - 4:00 AM EST
               </p>
             </div>
           </div>
@@ -233,8 +277,12 @@ export default function Settings() {
 
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <p className="font-medium text-gray-900">Two-Factor Authentication</p>
-                <p className="text-sm text-gray-600">Add an extra layer of security</p>
+                <p className="font-medium text-gray-900">
+                  Two-Factor Authentication
+                </p>
+                <p className="text-sm text-gray-600">
+                  Add an extra layer of security
+                </p>
               </div>
               <Switch />
             </div>
@@ -244,10 +292,18 @@ export default function Settings() {
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <p className="font-medium text-gray-900">Session Timeout</p>
-                <p className="text-sm text-gray-600">Auto-logout after inactivity</p>
+                <p className="text-sm text-gray-600">
+                  Auto-logout after inactivity
+                </p>
               </div>
               <div className="flex items-center gap-2">
-                <Input type="number" defaultValue="30" className="w-20" min="5" max="120" />
+                <Input
+                  type="number"
+                  defaultValue="30"
+                  className="w-20"
+                  min="5"
+                  max="120"
+                />
                 <span className="text-sm text-gray-600">min</span>
               </div>
             </div>
@@ -258,7 +314,9 @@ export default function Settings() {
               <Button variant="outline" className="w-full sm:w-auto">
                 Download Data
               </Button>
-              <p className="text-xs text-gray-600">Export all your data in accordance with privacy regulations</p>
+              <p className="text-xs text-gray-600">
+                Export all your data in accordance with privacy regulations
+              </p>
             </div>
           </div>
         </CardContent>
