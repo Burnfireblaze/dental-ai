@@ -25,7 +25,13 @@ from .schemas import (
     ProfileUpdateRequest,
     ChangePasswordRequest,
 )
-from .auth import create_access_token, get_current_user, hash_password, verify_password
+from .auth import (
+    create_access_token,
+    get_current_user,
+    hash_password,
+    verify_password,
+    ensure_password_within_limit,
+)
 from .pipeline.preprocess import load_image, save_preview
 from .pipeline import run_pipeline
 
@@ -72,6 +78,7 @@ def _profile_from_user(user: Dict[str, Any]) -> ProfileResponse:
 async def signup(payload: SignupRequest) -> AuthResponse:
     if len(payload.password) < settings.password_min_length:
         raise HTTPException(status_code=400, detail=f"Password must be at least {settings.password_min_length} characters.")
+    ensure_password_within_limit(payload.password)
     existing = storage.get_user_by_email(payload.email)
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered.")
@@ -91,6 +98,7 @@ async def signup(payload: SignupRequest) -> AuthResponse:
 
 @app.post("/auth/login", response_model=AuthResponse)
 async def login(payload: LoginRequest) -> AuthResponse:
+    ensure_password_within_limit(payload.password)
     user = storage.get_user_by_email(payload.email)
     if not user or not verify_password(payload.password, user.get("password_hash", "")):
         raise HTTPException(status_code=401, detail="Invalid credentials.")
@@ -127,6 +135,8 @@ async def change_password(
     payload: ChangePasswordRequest,
     current_user: Dict[str, Any] = Depends(get_current_user),
 ) -> JSONResponse:
+    ensure_password_within_limit(payload.current_password)
+    ensure_password_within_limit(payload.new_password)
     if not verify_password(payload.current_password, current_user.get("password_hash", "")):
         raise HTTPException(status_code=400, detail="Current password is incorrect.")
     if len(payload.new_password) < settings.password_min_length:

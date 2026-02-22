@@ -13,12 +13,34 @@ from . import storage
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
+def password_byte_length(password: str) -> int:
+    return len(password.encode("utf-8"))
+
+
+def is_password_too_long(password: str) -> bool:
+    return password_byte_length(password) > settings.password_max_bytes
+
+
+def ensure_password_within_limit(password: str) -> None:
+    if is_password_too_long(password):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Password must be at most {settings.password_max_bytes} bytes.",
+        )
+
+
 def hash_password(password: str) -> str:
+    ensure_password_within_limit(password)
     return pwd_context.hash(password)
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return pwd_context.verify(password, password_hash)
+    if is_password_too_long(password):
+        return False
+    try:
+        return pwd_context.verify(password, password_hash)
+    except ValueError:
+        return False
 
 
 def create_access_token(user: Dict[str, Any]) -> str:

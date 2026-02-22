@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
 import { useState } from 'react';
 import { RoleProvider } from './contexts/role-context';
 import LoginScreen from './pages/login-screen';
+import SignupScreen from './pages/signup-screen';
 import HomeScreen from './pages/home-screen';
 import DashboardScreen from './pages/dashboard-screen';
 import UploadScreen from './pages/upload-screen';
@@ -21,15 +22,17 @@ import AdminUsers from './pages/admin-users';
 import AdminRoles from './pages/admin-roles';
 import AdminActivity from './pages/admin-activity';
 import Layout from './components/layout/layout';
+import { getAccessToken } from './services/auth-api';
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(getAccessToken()));
 
   return (
     <BrowserRouter>
       <RoleProvider>
         <Routes>
           <Route path="/login" element={<LoginScreen onLogin={() => setIsAuthenticated(true)} />} />
+          <Route path="/signup" element={<SignupScreen onLogin={() => setIsAuthenticated(true)} />} />
           
           {isAuthenticated ? (
             <Route element={<Layout />}>
