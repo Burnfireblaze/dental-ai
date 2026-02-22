@@ -1,6 +1,6 @@
-export type Severity = 'urgent' | 'attention' | 'routine';
-export type FindingStatus = 'pending' | 'accepted' | 'rejected' | 'corrected';
-export type JobStatus = 'queued' | 'processing' | 'complete' | 'failed';
+export type Severity = "urgent" | "attention" | "routine";
+export type FindingStatus = "pending" | "accepted" | "rejected" | "corrected";
+export type JobStatus = "queued" | "processing" | "complete" | "failed";
 
 export interface ApiFinding {
   id: number;
@@ -106,7 +106,12 @@ export interface JobResponse {
   result_url?: string | null;
 }
 
-export type FeedbackActionType = 'accept' | 'reject' | 'correct' | 'set_routine' | 'add_missing';
+export type FeedbackActionType =
+  | "accept"
+  | "reject"
+  | "correct"
+  | "set_routine"
+  | "add_missing";
 
 export interface FeedbackAction {
   finding_id?: number;
@@ -153,6 +158,23 @@ export interface MetricsResponse {
   calibration: MetricCalibrationItem[];
   urgency_distribution: MetricUrgencyItem[];
   recent_corrections: MetricCorrectionItem[];
+}
+
+export interface AssistantMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface AssistantChatRequest {
+  message: string;
+  case_id?: string | null;
+  doctor_name?: string | null;
+  history?: AssistantMessage[];
+}
+
+export interface AssistantChatResponse {
+  response: string;
+  tools_used: string[];
 }
 
 export interface SummaryResponse {
