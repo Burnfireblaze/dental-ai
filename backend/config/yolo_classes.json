@@ -1,0 +1,18 @@
+{
+  "classes": [
+    "Caries",
+    "Deep Caries",
+    "Impacted",
+    "Periapical Lesion"
+  ],
+  "aliases": {
+    "caries": "Caries",
+    "deep caries": "Deep Caries",
+    "impacted": "Impacted",
+    "impacted tooth": "Impacted",
+    "periapical lesion": "Periapical Lesion",
+    "periapical lesions": "Periapical Lesion",
+    "abscess": "Periapical Lesion",
+    "periapical abscess": "Periapical Lesion"
+  }
+}

@@ -21,6 +21,60 @@ SYSTEM_PROMPT = (
 )
 
 
+def _build_global_context(limit: int = 12) -> str:
+    cases = storage.list_cases(limit=limit)
+    if not cases:
+        return "No prior cases in the database."
+
+    completed_cases = [case for case in cases if case.get("result")]
+    total_findings = 0
+    urgent_findings = 0
+    label_counts: Dict[str, int] = {}
+    for case in completed_cases:
+        findings = case["result"].get("findings", [])
+        total_findings += len(findings)
+        for finding in findings:
+            if finding.get("severity") == "urgent":
+                urgent_findings += 1
+            label = finding.get("label") or "Other"
+            label_counts[label] = label_counts.get(label, 0) + 1
+
+    top_labels = sorted(label_counts.items(), key=lambda item: item[1], reverse=True)[:5]
+    recent_cases = []
+    for case in completed_cases[:5]:
+        result = case["result"]
+        urgency = result.get("urgency", {})
+        findings = result.get("findings", [])[:5]
+        recent_cases.append(
+            {
+                "case_id": case.get("case_id"),
+                "patient_id": case.get("patient_id"),
+                "created_at": case.get("created_at"),
+                "urgency": urgency,
+                "findings": [
+                    {
+                        "tooth": f.get("tooth"),
+                        "label": f.get("label"),
+                        "severity": f.get("severity"),
+                        "confidence": f.get("confidence"),
+                    }
+                    for f in findings
+                ],
+            }
+        )
+
+    summary = {
+        "total_cases": len(cases),
+        "completed_cases": len(completed_cases),
+        "total_findings": total_findings,
+        "urgent_findings": urgent_findings,
+        "top_labels": [{"label": label, "count": count} for label, count in top_labels],
+        "recent_cases": recent_cases,
+    }
+
+    return "GLOBAL_CASE_DATA (JSON):\n" + json.dumps(summary, indent=2)
+
+
 def _build_case_context(case: Optional[Dict[str, Any]]) -> str:
     if not case or not case.get("result"):
         return "No case data available. Provide general guidance."
@@ -73,11 +127,13 @@ def _build_case_context(case: Optional[Dict[str, Any]]) -> str:
 
 def _build_messages(
     message: str,
+    global_context: str,
     case_context: str,
     history: Optional[List[Dict[str, str]]] = None,
 ) -> List[Dict[str, str]]:
     messages: List[Dict[str, str]] = [
         {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": f"GLOBAL CONTEXT:\n{global_context}"},
         {"role": "system", "content": f"CASE CONTEXT:\n{case_context}"},
     ]
     if history:
@@ -117,7 +173,8 @@ def _groq_chat(messages: List[Dict[str, str]]) -> str:
 
 def chat(message: str, case_id: Optional[str], history: Optional[List[Dict[str, str]]] = None) -> Dict[str, Any]:
     case = storage.get_case(case_id) if case_id else None
+    global_context = _build_global_context()
     case_context = _build_case_context(case)
-    messages = _build_messages(message, case_context, history)
+    messages = _build_messages(message, global_context, case_context, history)
     response = _groq_chat(messages)
     return {"response": response, "tools_used": []}

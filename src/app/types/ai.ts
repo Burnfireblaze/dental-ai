@@ -155,9 +155,36 @@ export interface MetricsResponse {
   acceptance_rate: number;
   corrections_made: number;
   average_urgency: number;
+  average_confidence: number;
+  total_findings: number;
+  feedback_count: number;
   calibration: MetricCalibrationItem[];
   urgency_distribution: MetricUrgencyItem[];
   recent_corrections: MetricCorrectionItem[];
+}
+
+export interface CaseSummary {
+  caseId: string;
+  patientId?: string | null;
+  createdAt: string;
+  status?: string | null;
+  urgencyLevel?: string | null;
+  findingsCount: number;
+  summary: string;
+  previewUrl?: string | null;
+}
+
+export interface CasesResponse {
+  cases: {
+    case_id: string;
+    patient_id?: string | null;
+    created_at: string;
+    status?: string | null;
+    urgency_level?: string | null;
+    findings_count: number;
+    summary: string;
+    preview_url?: string | null;
+  }[];
 }
 
 export interface AssistantMessage {
